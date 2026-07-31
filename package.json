@@ -1,0 +1,18 @@
+{
+  "name": "c2cw",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @c2cw/api exec prisma migrate dev",
+    "db:generate": "pnpm --filter @c2cw/api exec prisma generate",
+    "db:studio": "pnpm --filter @c2cw/api exec prisma studio",
+    "db:seed": "pnpm --filter @c2cw/api exec prisma db seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.5.4"
+  }
+}

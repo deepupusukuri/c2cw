@@ -1,0 +1,534 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  STUDENT
+  COLLEGE
+  CORPORATE
+  HIRING_PARTNER
+  PLACEMENT_PARTNER
+  TRAINER
+  ADMIN
+}
+
+enum OAuthProvider {
+  EMAIL
+  GOOGLE
+  LINKEDIN
+}
+
+enum ProjectType {
+  ACADEMIC
+  INTERNSHIP
+  FREELANCE
+  MARATHON
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  SCORED
+}
+
+enum ProgramType {
+  CAREER_PATH
+  CORE
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  WITHDRAWN
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum PipelineStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum InternshipStatus {
+  DRAFT
+  PENDING_APPROVAL
+  OPEN
+  CLOSED
+}
+
+enum InternshipApplicationStatus {
+  APPLIED
+  SELECTED
+  REJECTED
+}
+
+enum FreelanceStatus {
+  PENDING_APPROVAL
+  APPROVED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum TalkStatus {
+  APPLIED
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum TransactionType {
+  PAYMENT
+  PAYOUT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum InfluencerBadge {
+  NONE
+  BRONZE
+  SILVER
+  GOLD
+  INFLUENCER
+}
+
+enum SponsorshipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SponsorshipRequestStatus {
+  PENDING
+  MATCHED
+  REJECTED
+}
+
+enum MarathonEventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum MarathonParticipantStatus {
+  REGISTERED
+  SUBMITTED
+  SCORED
+}
+
+enum PlacementReferralStatus {
+  REFERRED
+  HIRED
+  COMMISSION_APPROVED
+  PAID
+  REJECTED
+}
+
+enum CampusAmbassadorStatus {
+  APPLIED
+  APPROVED
+  REJECTED
+}
+
+// ---------- Core ----------
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String?
+  name          String?
+  role          Role          @default(STUDENT)
+  oauthProvider OAuthProvider @default(EMAIL)
+  oauthId       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  studentProfile   StudentProfile?
+  hiringPartner    HiringPartner?
+  ownedProjects    Project[]        @relation("ProjectOwner")
+  enrollments      Enrollment[]
+  applications     Application[]
+  postedJobs       Job[]            @relation("JobPoster")
+  mentoredInterns  Internship[]     @relation("InternshipMentor")
+  postedInternships Internship[]    @relation("InternshipPoster")
+  internshipEvals  InternshipEval[]
+  internshipApplications InternshipApplication[] @relation("InternshipApplicant")
+  freelanceClient  FreelanceProject[] @relation("FreelanceClient")
+  freelanceStudent FreelanceProject[] @relation("FreelanceAssignee")
+  referralsFrom    Referral[]       @relation("ReferralFrom")
+  referralsTo      Referral[]       @relation("ReferralTo")
+  talks            Talk[]
+  sentMessages     Message[]        @relation("MessageSender")
+  receivedMessages Message[]        @relation("MessageReceiver")
+  transactions     Transaction[]
+  wallet           Wallet?
+  placementPartner PlacementPartner?
+  campusAmbassador CampusAmbassador?
+  sponsorships       Sponsorship[]        @relation("SponsorshipSponsor")
+  sponsorshipRequests SponsorshipRequest[] @relation("SponsorshipRequester")
+
+  @@index([role])
+}
+
+model StudentProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills            Json     @default("[]")
+  projectsSummary   Json     @default("[]")
+  internships       Json     @default("[]")
+  assessments       Json     @default("[]")
+  certifications    Json     @default("[]")
+  achievements      Json     @default("[]")
+  experience        Json     @default("[]")
+  videoUrl          String?
+  influenceScore    Int      @default(0)
+  influencerBadge   InfluencerBadge @default(NONE)
+  readinessScore    Int      @default(0)
+  aiProfileAnalysis Json?
+  metadata          Json     @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Program {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  type        ProgramType
+  description String?
+  configJson  Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId String
+  program   Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([userId, programId])
+}
+
+model Project {
+  id        String        @id @default(cuid())
+  ownerId   String
+  owner     User          @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String
+  type      ProjectType
+  status    ProjectStatus @default(DRAFT)
+  score     Int?
+  metadata  Json          @default("{}")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  marathonParticipant MarathonParticipant?
+
+  @@index([type, status])
+}
+
+model Job {
+  id               String        @id @default(cuid())
+  hiringPartnerId  String?
+  hiringPartner    HiringPartner? @relation(fields: [hiringPartnerId], references: [id])
+  postedById       String
+  postedBy         User          @relation("JobPoster", fields: [postedById], references: [id])
+  title            String
+  description      String?
+  requirements     Json          @default("{}")
+  requiredSkills   String[]      @default([])
+  minReadinessScore Int          @default(0)
+  status           JobStatus     @default(DRAFT)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  applications       Application[]
+  placementReferrals PlacementReferral[]
+}
+
+model Application {
+  id        String        @id @default(cuid())
+  jobId     String
+  job       Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  stage     PipelineStage @default(APPLIED)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([jobId, studentId])
+}
+
+model Internship {
+  id          String           @id @default(cuid())
+  companyId   String?
+  company     HiringPartner?   @relation(fields: [companyId], references: [id])
+  postedById  String?
+  postedBy    User?            @relation("InternshipPoster", fields: [postedById], references: [id])
+  title       String
+  description String?
+  status      InternshipStatus @default(DRAFT)
+  mentorId    String?
+  mentor      User?            @relation("InternshipMentor", fields: [mentorId], references: [id])
+  metadata    Json             @default("{}")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  evaluations  InternshipEval[]
+  applications InternshipApplication[]
+}
+
+model InternshipApplication {
+  id           String                       @id @default(cuid())
+  internshipId String
+  internship   Internship                   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User                         @relation("InternshipApplicant", fields: [studentId], references: [id], onDelete: Cascade)
+  status       InternshipApplicationStatus  @default(APPLIED)
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  @@unique([internshipId, studentId])
+}
+
+model InternshipEval {
+  id           String     @id @default(cuid())
+  internshipId String
+  internship   Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score        Int?
+  notes        String?
+  createdAt    DateTime   @default(now())
+
+  @@unique([internshipId, studentId])
+}
+
+model HiringPartner {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  tier        String   @default("standard")
+  configJson  Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobs        Job[]
+  internships Internship[]
+}
+
+model FreelanceProject {
+  id                 String          @id @default(cuid())
+  clientId           String
+  client             User            @relation("FreelanceClient", fields: [clientId], references: [id], onDelete: Cascade)
+  assignedStudentId  String?
+  assignedStudent    User?           @relation("FreelanceAssignee", fields: [assignedStudentId], references: [id])
+  title              String
+  description        String?
+  status             FreelanceStatus @default(PENDING_APPROVAL)
+  milestones         Json            @default("[]")
+  budget             Decimal?        @db.Decimal(12, 2)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model Referral {
+  id             String   @id @default(cuid())
+  referrerId     String
+  referrer       User     @relation("ReferralFrom", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId     String
+  referred       User     @relation("ReferralTo", fields: [referredId], references: [id], onDelete: Cascade)
+  pointsAwarded  Int      @default(0)
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  @@unique([referrerId, referredId])
+}
+
+model Talk {
+  id        String     @id @default(cuid())
+  speakerId String
+  speaker   User       @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String     @unique
+  videoUrl  String?
+  status    TalkStatus @default(APPLIED)
+  metadata  Json       @default("{}")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  body        String
+  attachments Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  @@index([senderId, receiverId])
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Decimal            @db.Decimal(12, 2)
+  status      TransactionStatus  @default(PENDING)
+  razorpayRef String?
+  metadata    Json               @default("{}")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model Module {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  isEnabled  Boolean  @default(true)
+  configJson Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ---------- Phase 3 ----------
+
+model Sponsorship {
+  id               String            @id @default(cuid())
+  sponsorId        String
+  sponsor          User              @relation("SponsorshipSponsor", fields: [sponsorId], references: [id], onDelete: Cascade)
+  companyName      String
+  tier             String            @default("standard")
+  amount           Decimal           @db.Decimal(12, 2)
+  status           SponsorshipStatus @default(PENDING)
+  matchedRequestId String?           @unique
+  matchedRequest   SponsorshipRequest? @relation(fields: [matchedRequestId], references: [id])
+  configJson       Json              @default("{}")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model SponsorshipRequest {
+  id              String                   @id @default(cuid())
+  requesterId     String
+  requester       User                     @relation("SponsorshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  amountRequested Decimal                  @db.Decimal(12, 2)
+  status          SponsorshipRequestStatus @default(PENDING)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  sponsorship Sponsorship?
+}
+
+model MarathonEvent {
+  id          String              @id @default(cuid())
+  title       String
+  slug        String              @unique
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  status      MarathonEventStatus @default(DRAFT)
+  configJson  Json                @default("{}")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  participants MarathonParticipant[]
+}
+
+model MarathonParticipant {
+  id        String                    @id @default(cuid())
+  eventId   String
+  event     MarathonEvent             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  studentId String
+  projectId String?                   @unique
+  project   Project?                  @relation(fields: [projectId], references: [id])
+  status    MarathonParticipantStatus @default(REGISTERED)
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  @@unique([eventId, studentId])
+}
+
+model PlacementPartner {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agencyName     String
+  commissionRate Decimal  @default(10) @db.Decimal(5, 2)
+  configJson     Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  referrals PlacementReferral[]
+}
+
+model PlacementReferral {
+  id                 String                  @id @default(cuid())
+  placementPartnerId String
+  placementPartner   PlacementPartner        @relation(fields: [placementPartnerId], references: [id], onDelete: Cascade)
+  studentId          String
+  jobId              String
+  job                Job                     @relation(fields: [jobId], references: [id])
+  baseAmount         Decimal                 @db.Decimal(12, 2)
+  commissionRate     Decimal                 @db.Decimal(5, 2)
+  commissionAmount   Decimal                 @db.Decimal(12, 2)
+  status             PlacementReferralStatus @default(REFERRED)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([placementPartnerId, studentId, jobId])
+}
+
+model CampusAmbassador {
+  id          String                 @id @default(cuid())
+  userId      String                 @unique
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collegeName String
+  status      CampusAmbassadorStatus @default(APPLIED)
+  configJson  Json                   @default("{}")
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
