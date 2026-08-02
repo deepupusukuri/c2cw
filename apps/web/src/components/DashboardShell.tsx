@@ -1,10 +1,10 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LucideIcon, Search } from "lucide-react";
+import { LucideIcon, MoreHorizontal, Search } from "lucide-react";
 import { ProfileMenu } from "./ui/ProfileMenu";
 import { Breadcrumbs } from "./ui/Breadcrumbs";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ export function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
 
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,6 +41,16 @@ export function DashboardShell({
 
   const activeItem = navItems.find((item) => isActivePath(pathname, item.href));
   const crumbs = [{ label: title }, ...(activeItem ? [{ label: activeItem.label }] : [])];
+
+  const MOBILE_TAB_LIMIT = 5;
+  const overflows = navItems.length > MOBILE_TAB_LIMIT;
+  const primaryItems = overflows ? navItems.slice(0, MOBILE_TAB_LIMIT - 1) : navItems;
+  const overflowItems = overflows ? navItems.slice(MOBILE_TAB_LIMIT - 1) : [];
+  const overflowActive = overflowItems.some((item) => isActivePath(pathname, item.href));
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-surface-muted">
@@ -120,9 +131,48 @@ export function DashboardShell({
         </main>
       </div>
 
+      {/* Mobile overflow sheet (only rendered when nav has more items than the bottom bar can hold) */}
+      <AnimatePresence>
+        {moreOpen && overflowItems.length > 0 && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-20 bg-ink/20 sm:hidden"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="fixed inset-x-0 bottom-16 z-20 max-h-[60vh] overflow-y-auto rounded-t-card border-t border-border bg-surface p-3 shadow-lg sm:hidden"
+            >
+              {overflowItems.map((item) => {
+                const active = isActivePath(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-btn px-3 py-3 text-sm transition-colors duration-150 ease-out",
+                      active ? "bg-primary/10 font-medium text-primary" : "text-ink-secondary",
+                    )}
+                  >
+                    <item.icon size={18} strokeWidth={1.75} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Mobile bottom tab nav */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface sm:hidden">
-        {navItems.slice(0, 5).map((item) => {
+        {primaryItems.map((item) => {
           const active = isActivePath(pathname, item.href);
           return (
             <Link
@@ -138,6 +188,19 @@ export function DashboardShell({
             </Link>
           );
         })}
+        {overflowItems.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors duration-150 ease-out",
+              moreOpen || overflowActive ? "text-primary" : "text-ink-secondary",
+            )}
+          >
+            <MoreHorizontal size={20} strokeWidth={1.75} />
+            <span className="text-[11px]">More</span>
+          </button>
+        )}
       </nav>
     </div>
   );
