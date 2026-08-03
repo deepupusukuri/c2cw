@@ -1,11 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileMenu } from "./ui/ProfileMenu";
+import { cn } from "@/lib/utils";
+
+const NAV_LINKS = [
+  { href: "/programs", label: "Programs", hiddenOnMobile: true },
+  { href: "/internships", label: "Internships", hiddenOnMobile: true },
+  { href: "/jobs", label: "Jobs", hiddenOnMobile: false },
+  { href: "/talks", label: "Talks", hiddenOnMobile: true },
+  { href: "/search", label: "Search", hiddenOnMobile: true },
+];
+
+function isActivePath(pathname: string | null, href: string) {
+  if (!pathname) return false;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Navbar() {
   const { user } = useAuth();
+  const pathname = usePathname();
 
   return (
     <header className="border-b border-border bg-surface">
@@ -14,21 +30,21 @@ export function Navbar() {
           C2CW
         </Link>
         <nav className="flex items-center gap-4 text-sm">
-          <Link href="/programs" className="hidden text-ink-secondary hover:text-ink sm:inline">
-            Programs
-          </Link>
-          <Link href="/internships" className="hidden text-ink-secondary hover:text-ink sm:inline">
-            Internships
-          </Link>
-          <Link href="/jobs" className="text-ink-secondary hover:text-ink">
-            Jobs
-          </Link>
-          <Link href="/talks" className="hidden text-ink-secondary hover:text-ink sm:inline">
-            Talks
-          </Link>
-          <Link href="/search" className="hidden text-ink-secondary hover:text-ink sm:inline">
-            Search
-          </Link>
+          {NAV_LINKS.map((link) => {
+            const active = isActivePath(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  link.hiddenOnMobile && "hidden sm:inline",
+                  active ? "font-semibold text-ink" : "text-ink-secondary hover:text-ink",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           {user ? (
             <ProfileMenu showName={false} />
           ) : (
