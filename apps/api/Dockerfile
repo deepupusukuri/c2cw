@@ -13,6 +13,10 @@
 # auto-detection guessing correctly for this layout.
 
 FROM node:24-slim AS base
+# node:*-slim doesn't ship OpenSSL, but Prisma's engine binaries need it to
+# run (both `prisma generate` in the build stage and `prisma migrate deploy`
+# at runtime) - without it Prisma fails with "Schema engine error".
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /app
 
