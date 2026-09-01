@@ -7,7 +7,7 @@ import { AuthLayout } from "@/components/AuthLayout";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
 export default function LoginPage() {
   const { login } = useAuth();
