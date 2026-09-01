@@ -19,7 +19,7 @@ services:
       npx turbo run build --filter=@c2cw/api
     startCommand: >-
       pnpm --filter @c2cw/api exec prisma migrate deploy --schema=prisma/schema.prisma &&
-      node apps/api/dist/main.js
+      node apps/api/build/main.js
     healthCheckPath: /api
     envVars:
       # Render injects PORT automatically — main.ts reads process.env.PORT, do not set it here.
