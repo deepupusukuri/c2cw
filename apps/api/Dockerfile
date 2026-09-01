@@ -34,6 +34,11 @@ FROM deps AS build
 COPY . .
 RUN pnpm --filter @c2cw/api exec prisma generate --schema=prisma/schema.prisma
 RUN npx turbo run build --filter=@c2cw/api
+# TEMP DIAGNOSTIC - fails the build loudly right here if the compiled output
+# isn't where we expect, instead of failing silently later at deploy time.
+RUN echo "--- apps/api contents ---" && ls -la apps/api && \
+    echo "--- apps/api/build contents ---" && ls -la apps/api/build && \
+    test -f apps/api/build/main.js && echo "main.js FOUND"
 
 # ---- runner: only what's needed to run the compiled api ----
 FROM base AS runner
