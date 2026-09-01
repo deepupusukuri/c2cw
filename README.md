@@ -6,8 +6,9 @@ monorepo: `apps/web` (Next.js 14), `apps/api` (NestJS + Prisma + PostgreSQL), `p
 
 ## Confirmed decisions for this build
 
-- **Deployment target:** Vercel (web) + Railway/Render (api + Postgres) — no deployment config
-  wired yet, this only affects future infra work, not Phase 1 code.
+- **Deployment target:** Vercel (web) + Render (api) + Neon (Postgres) — free tier. See
+  [DEPLOYMENT.md](./DEPLOYMENT.md) for the full setup walkthrough and `render.yaml` for the API's
+  build/start commands.
 - **Payments:** Razorpay is stubbed behind a `PaymentProvider` interface
   (`apps/api/src/modules/wallet/providers/`). No real Razorpay/Stripe API calls are made.
 - **Tenancy:** Single-tenant, role-based. `College`/`Corporate`/`HiringPartner` are roles/entities,

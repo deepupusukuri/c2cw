@@ -1,0 +1,49 @@
+# Render Blueprint for @c2cw/api
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Usage: In the Render dashboard, "New +" -> "Blueprint", point it at this repo.
+# Render reads this file automatically and creates the service below.
+# Env vars marked `sync: false` must be filled in manually in the Render
+# dashboard after the service is created (Render won't invent secrets for you).
+
+services:
+  - type: web
+    name: c2cw-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: >-
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @c2cw/api exec prisma generate --schema=prisma/schema.prisma &&
+      npx turbo run build --filter=@c2cw/api
+    startCommand: >-
+      pnpm --filter @c2cw/api exec prisma migrate deploy --schema=prisma/schema.prisma &&
+      node apps/api/dist/main.js
+    healthCheckPath: /api
+    envVars:
+      # Render injects PORT automatically — main.ts reads process.env.PORT, do not set it here.
+      - key: DATABASE_URL
+        sync: false # paste the Neon connection string here
+      - key: JWT_SECRET
+        sync: false # generate a long random string, e.g. `openssl rand -base64 32`
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: WEB_APP_URL
+        sync: false # e.g. https://your-app.vercel.app — must include https://
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_CALLBACK_URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
