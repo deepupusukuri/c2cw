@@ -5,21 +5,22 @@
 # Render reads this file automatically and creates the service below.
 # Env vars marked `sync: false` must be filled in manually in the Render
 # dashboard after the service is created (Render won't invent secrets for you).
+#
+# Uses a Dockerfile (apps/api/Dockerfile) rather than Render's auto-detected
+# Node build: the auto-detected builder compiled the app fine but didn't
+# preserve this monorepo's nested build output (apps/api/build/) when
+# packaging the deploy artifact. The Dockerfile gives explicit control over
+# what ships in the final image instead of relying on that auto-detection.
 
 services:
   - type: web
     name: c2cw-api
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
     plan: free
     region: singapore
     branch: main
-    buildCommand: >-
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @c2cw/api exec prisma generate --schema=prisma/schema.prisma &&
-      npx turbo run build --filter=@c2cw/api
-    startCommand: >-
-      pnpm --filter @c2cw/api exec prisma migrate deploy --schema=prisma/schema.prisma &&
-      node apps/api/build/main.js
     healthCheckPath: /api
     envVars:
       # Render injects PORT automatically — main.ts reads process.env.PORT, do not set it here.

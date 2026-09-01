@@ -25,12 +25,20 @@ database's connection string), then the web app (which needs the API's URL).
    - If you'd rather configure it by hand instead of via the blueprint,
      create a **Web Service** manually with:
      - Root Directory: *(leave blank / repo root)*
-     - Build Command: `pnpm install --frozen-lockfile && pnpm --filter @c2cw/api exec prisma generate --schema=prisma/schema.prisma && npx turbo run build --filter=@c2cw/api`
-     - Start Command: `pnpm --filter @c2cw/api exec prisma migrate deploy --schema=prisma/schema.prisma && node apps/api/build/main.js`
-       (compiled output lives in `build/`, not the usual `dist/` — Render's
-       build-artifact packaging strips anything matched by `.gitignore` before
-       deploying, and `dist` is gitignored, which silently deleted the
-       compiled app; `build/` isn't gitignored, so it survives)
+     - Runtime/Environment: **Docker**
+     - Dockerfile Path: `apps/api/Dockerfile`
+     - Docker Build Context Directory: `.` (repo root — required, since this
+       is a pnpm workspace monorepo and the install step needs every
+       workspace member's `package.json` to match `pnpm-lock.yaml`)
+
+     This deploys via `apps/api/Dockerfile` rather than Render's
+     auto-detected Node build. That auto-detected builder (Railpack)
+     compiled the app fine every time, but silently failed to preserve this
+     monorepo's nested build output (`apps/api/build/`, formerly
+     `apps/api/dist/`) when packaging the deploy artifact — it only
+     recognizes build outputs at conventional, non-monorepo locations. The
+     Dockerfile gives full explicit control over what ships in the final
+     image instead of relying on that auto-detection guessing right.
 3. Once the service is created, open its **Environment** tab and fill in the
    variables marked `sync: false` in `render.yaml`:
    - `DATABASE_URL` — the Neon connection string from step 1.
