@@ -5,12 +5,17 @@
 # every workspace member's package.json to match pnpm-lock.yaml.
 #
 # Why a Dockerfile at all, instead of Render's auto-detected Node build:
-# Render's native Node builder (Railpack) builds the project successfully but
-# doesn't reliably preserve a nested workspace's custom build output
-# (apps/api/build/) when it packages the deploy artifact - it only recognizes
-# build outputs at conventional, non-monorepo locations. A Dockerfile gives
-# full explicit control over the final image instead of relying on that
-# auto-detection guessing correctly for this layout.
+# gives full explicit control over exactly what ships in the final image for
+# this monorepo, rather than relying on auto-detection to guess a nested
+# workspace's build output correctly.
+#
+# (The actual root cause of an earlier "module not found" failure here turned
+# out to be unrelated to Render/Docker at all: apps/api/tsconfig.json had no
+# explicit rootDir, and the build's input set included apps/api/prisma/seed.ts
+# alongside apps/api/src/**, so TypeScript inferred the common root as
+# apps/api/ itself and emitted apps/api/build/src/main.js instead of
+# apps/api/build/main.js. Fixed by pinning rootDir to ./src and excluding
+# prisma/ from the build's tsconfig.)
 
 FROM node:24-slim AS base
 # node:*-slim doesn't ship OpenSSL, but Prisma's engine binaries need it to
@@ -34,11 +39,9 @@ FROM deps AS build
 COPY . .
 RUN pnpm --filter @c2cw/api exec prisma generate --schema=prisma/schema.prisma
 RUN npx turbo run build --filter=@c2cw/api
-# TEMP DIAGNOSTIC - fails the build loudly right here if the compiled output
-# isn't where we expect, instead of failing silently later at deploy time.
-RUN echo "--- apps/api contents ---" && ls -la apps/api && \
-    echo "--- apps/api/build contents ---" && ls -la apps/api/build && \
-    test -f apps/api/build/main.js && echo "main.js FOUND"
+# Fail the build loudly here if the entrypoint isn't where the runner stage
+# (and the CMD below) expect it, instead of finding out later at deploy time.
+RUN test -f apps/api/build/main.js || (echo "apps/api/build/main.js missing after build:" && ls -laR apps/api/build && exit 1)
 
 # ---- runner: only what's needed to run the compiled api ----
 FROM base AS runner
