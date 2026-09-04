@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
+import { AppController } from "./app.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -49,6 +50,7 @@ import { SmartSearchModule } from "./modules/smart-search/smart-search.module";
     RecommendationsModule,
     SmartSearchModule,
   ],
+  controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}
